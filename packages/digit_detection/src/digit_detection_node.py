@@ -204,7 +204,7 @@ class DigitDetectionNode(DTROS):
         self.detect_digits(msg)
         self.detect_lane(msg)
         
-    def detect_lane(self, msg)
+    def detect_lane(self, msg):
         img = self.jpeg.decode(msg.data)
         
         crop = img[:, :, :]
@@ -284,14 +284,14 @@ class DigitDetectionNode(DTROS):
             # crop a square of the image above the apriltag
             x_coords = [corner[0].astype(int) for corner in closest.corners]
             y_coords = [corner[1].astype(int) for corner in closest.corners]
-            y_coords = y_coords + y_coords[1] - y_coords[2]
+            y_coords = y_coords - (y_coords[1] - y_coords[2]) * 1.5 # Shift coordinates upward by 1.5 * height of box
             
             x_min = min(x_coords)
             x_max = max(x_coords) + 1
             y_min = min(y_coords)
             y_max = max(y_coords) + 1
         
-            cropped_image = image_gray[y_min:y_max, x_min,x_max]
+            cropped_image = image_gray[y_min:y_max, x_min:x_max]
         
             # TODO: run digit detection on the cropped image
             digit = "9"
@@ -344,13 +344,13 @@ class DigitDetectionNode(DTROS):
 
         # label the digit
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_size = 0.8
+        font_size = 1.5
         thickness = 2
 
-        cv2.putText(image, text, pt2, font, font_size, (255, 0, 0), thickness)
+        cv2.putText(image, str(digit), pt2, font, font_size, (255, 0, 0), thickness)
 
         # draw a border box around the digit
-        cv2.rectangle(image, pt1, pt2, (255, 0, 0) thickness)
+        cv2.rectangle(image, pt1, pt2, (255, 0, 0), thickness)
 
         return image
         
