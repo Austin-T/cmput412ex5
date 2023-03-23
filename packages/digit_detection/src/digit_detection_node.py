@@ -81,6 +81,18 @@ class DigitDetectionNode(DTROS):
                                     decode_sharpening=0.25,
                                     debug=0)
         self.at_distance = 0
+        self.at_locations = {
+            200: (0.17, 0.17),  # (x, y) position in world frame
+            201: (1.65, 0.17),
+            94: (1.65, 2.84),
+            93: (0.17, 2.84),
+            153: (1.75, 1.252),
+            133: (1.253, 1.755),
+            58: (0.574, 1.259),
+            62: (0.075, 1.755),
+            169: (0.574, 1.755),
+            162: (1.253, 1.253)
+        }
         self.intersections = {
             133: 'INTER_R',  # T intersection with right-turn option
             153: 'INTER_L',  # T intersection with left-turn option
@@ -89,6 +101,9 @@ class DigitDetectionNode(DTROS):
             162: 'STOP',  # Stop sign
             169: 'STOP'   # Stop sign
         }
+        
+        # set of found digits
+        self.digits_found = set()
 
         # apriltag detection filters
         self.decision_threshold = 10
@@ -96,7 +111,7 @@ class DigitDetectionNode(DTROS):
 
         # PID Variables for driving
         self.proportional = None
-        self.offset = 0
+        self.offset = 170
         self.velocity = 0.25
         self.twist = Twist2DStamped(v=self.velocity, omega=0)
 
@@ -165,20 +180,22 @@ class DigitDetectionNode(DTROS):
         self.pass_time(1.0)
 
     def right_turn(self):
+        rospy.loginfo("TURNING RIGHT")
         self.twist.v = 0
         self.twist.omega = -12
         self.vel_pub.publish(self.twist)
         start_time = rospy.get_time()
-        while rospy.get_time() < start_time + 0.6:
+        while rospy.get_time() < start_time + 1:
             continue
         self.stop()
 
     def left_turn(self):
+        rospy.loginfo("TURNING LEFT")
         self.twist.v = 0
         self.twist.omega = 12
         self.vel_pub.publish(self.twist)
         start_time = rospy.get_time()
-        while rospy.get_time() < start_time + 0.6:
+        while rospy.get_time() < start_time + 1:
             continue
         self.stop()
 
@@ -266,6 +283,7 @@ class DigitDetectionNode(DTROS):
         tags = self.at_detector.detect(
             image_gray, estimate_tag_pose=True, camera_params=self.camera_params, tag_size=0.065)
 
+        # get the closest-detected tag
         closest_tag_z = 1000
         closest = None
 
@@ -284,7 +302,7 @@ class DigitDetectionNode(DTROS):
             # crop a square of the image above the apriltag
             x_coords = [corner[0].astype(int) for corner in closest.corners]
             y_coords = [corner[1].astype(int) for corner in closest.corners]
-            y_coords = y_coords - (y_coords[1] - y_coords[2]) * 1.5 # Shift coordinates upward by 1.5 * height of box
+            y_coords = y_coords - (y_coords[1] - y_coords[2] + 10) # Shift bounding box upward
             
             x_min = min(x_coords)
             x_max = max(x_coords) + 1
@@ -299,6 +317,17 @@ class DigitDetectionNode(DTROS):
             # label the apriltag and digit
             self.labelTag(image_np, closest)
             self.labelDigit(image_np, digit, (x_min, y_min), (x_max, y_max))
+            
+            if not digit in self.digits_found:
+            
+                # print the digit and coresponding apriltag location to the console
+                tag_x, tag_y = self.at_locations[closest.tag_id]
+                rospy.loginfo(f"DIGIT DETECTED\n\tdigit: {str(digit)}\n\tapriltag: {str(closest.tag_id)}\n\tposition (x,y): ({str(tag_x)}, {str(tag_y)})\n")
+            
+                # terminate if all digits have been found
+                self.digits_found.add(digit)
+                if len(self.digits_found) == 10:
+                    rospy.signal_shutdown()
             
             # check if the apriltag is an intersection
             if closest.tag_id in self.intersections:
