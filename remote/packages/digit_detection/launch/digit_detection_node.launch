@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="pkg_name" value="duckiebot_detection"/>
+    <arg name="pkg_name" value="digit_detection"/>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="node_name" default="digit_detection_node"/>
 

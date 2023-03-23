@@ -20,10 +20,10 @@ DEBUG = False
 ENGLISH = False
 
 
-class DigitDetectionNode(DTROS):
+class MovementControlNode(DTROS):
 
     def __init__(self, node_name):
-        super(DigitDetectionNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
+        super(MovementControlNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
         self.node_name = node_name
         self.veh = rospy.get_param("~veh")
 
@@ -42,6 +42,10 @@ class DigitDetectionNode(DTROS):
             self.img_callback,
             queue_size=1,
             buff_size="20MB")
+            
+        # Services proxies
+        # rospy.wait_for_service(f'/{self.veh_name}/digit_detection_node/digit_detection_service')
+        # self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh_name}/digit_detection_node/digit_detection_service', CompressedImage)
 
         # image processing tools
         self.bridge = CvBridge()
@@ -404,5 +408,5 @@ class DigitDetectionNode(DTROS):
 
 
 if __name__ == "__main__":
-    node = DigitDetectionNode("digit_detection_node")
+    node = MovementControlNode("movement_control_node")
     node.run()

@@ -1,47 +1,9 @@
-# Template: template-ros
+# Exercise 5: ML for Robotics
+This lab provides an introduction to machine learning in robotics. The object of the lab is to drive a duckiebot autonomously around the environment, whilst detecting hand-written digits posted above apriltags around the town.
 
-This template provides a boilerplate repository
-for developing ROS-based software in Duckietown.
+Code for deliverable 2 of our exercise is stored in [this google colab file](https://drive.google.com/file/d/1xCzCckQqqgaHs2HVH4e0ew5MFLqFDnb9/view?usp=sharing).
 
-**NOTE:** If you want to develop software that does not use
-ROS, check out [this template](https://github.com/duckietown/template-basic).
-
-
-## How to use it
-
-### 1. Fork this repository
-
-Use the fork button in the top-right corner of the github page to fork this template repository.
-
-
-### 2. Create a new repository
-
-Create a new repository on github.com while
-specifying the newly forked template repository as
-a template for your new repository.
-
-
-### 3. Define dependencies
-
-List the dependencies in the files `dependencies-apt.txt` and
-`dependencies-py3.txt` (apt packages and pip packages respectively).
-
-
-### 4. Place your code
-
-Place your code in the directory `/packages/` of
-your new repository.
-
-
-### 5. Setup launchers
-
-The directory `/launchers` can contain as many launchers (launching scripts)
-as you want. A default launcher called `default.sh` must always be present.
-
-If you create an executable script (i.e., a file with a valid shebang statement)
-a launcher will be created for it. For example, the script file 
-`/launchers/my-launcher.sh` will be available inside the Docker image as the binary
-`dt-launcher-my-launcher`.
-
-When launching a new container, you can simply provide `dt-launcher-my-launcher` as
-command.
+Code for satisfying deliverable 3 of the exercise is contained within this repository.
+- Under the `local` folder, you will find a ROS docker image to be run locally on a duckiebot, which contains a node that orchestrates autonomous movement through the environment.
+- Under the `remote` folder you will find a ROS docker image to be run on a desktop or laptop computer, containing a service node that manages prediction of hand-written digits.
+- Because pytorch libraries are too large to load directly on the duckiebot, the deliverable has been subdivided into seperate projects as described.
