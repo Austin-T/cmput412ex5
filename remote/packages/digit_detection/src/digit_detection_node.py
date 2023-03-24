@@ -9,6 +9,7 @@ import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from model import CNN
+from multilayer_perceptron_eval import DigitPredictor
 
 
 class DigitDetectionNode(DTROS):
@@ -20,10 +21,10 @@ class DigitDetectionNode(DTROS):
 
         # Services
         self.service = rospy.Service(f'/{self.veh}/digit_detection_node/digit_detection_service', CompressedImage, self.detect_digit)
-        
+
         # image processing tools
         self.bridge = CvBridge()
-        
+
         # MLP model
         self.INPUT_H = 28
         self.INPUT_W = 28
@@ -31,9 +32,9 @@ class DigitDetectionNode(DTROS):
         self.OUTPUT_DIM = 10
 
         self.model = CNN(self.INPUT_DIM, self.OUTPUT_DIM)
-        
-    def detect_digit(self, img_msg):
+        self.predictor = DigitPredictor(self.INPUT_DIM, self.OUTPUT_DIM)
 
+    def detect_digit(self, img_msg):
         # convert image into cv2 type
         cv_image = None
         try:
@@ -44,16 +45,16 @@ class DigitDetectionNode(DTROS):
 
         # reformat the image to the appropriate 28 * 28 size
         cv_image = cv2.resize(cv_image, (self.INPUT_H, self.INPUT_W))
-        
+
         # normalize the image
-        cv_image = (cv_image - np.mean(cv_image)) / np.std(cv_image)
-        
-        # TODO: flatten the image
-        
+        # cv_image = (cv_image - np.mean(cv_image)) / np.std(cv_image)
+
         # TODO: predict the digit
-        
+        digit = self.predictor.predict(cv_image)
         # TODO: return the result
-        
+        return digit
+
+
     def hook(self):
         print("SHUTTING DOWN")
 
