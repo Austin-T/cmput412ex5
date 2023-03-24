@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import rospy
+import sys
+#sys.path.append('./dt_msgs')
 
 from duckietown.dtros import DTROS, NodeType
+
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Float32
 import cv2
