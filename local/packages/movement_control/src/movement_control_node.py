@@ -106,8 +106,9 @@ class MovementControlNode(DTROS):
             169: 'STOP'   # Stop sign
         }
         
-        # set of found digits
+        # set of found digits and apriltags
         self.digits_found = set()
+        self.ats_found = set()
 
         # apriltag detection filters
         self.decision_threshold = 10
@@ -132,8 +133,14 @@ class MovementControlNode(DTROS):
 
     def run(self):
         rate = rospy.Rate(8)  # 8hz
+        i = 0
         while not rospy.is_shutdown():
-        
+            i += 1
+            
+            if i % 4 == 0:
+               self.detect_digits(self.image_msg)
+               self.detect_lane(self.image_msg)
+            
             if self.intersection_detected:
                 self.intersection_sequence()
             self.drive()
@@ -163,10 +170,18 @@ class MovementControlNode(DTROS):
 
         rospy.loginfo("INTERSECTION DETECTED. at {} INTERSECTION DETECTED. INTERSECTION DETECTED.".format(str(self.at_distance)))
 
+        # advance to intersection
+        self.pub_straight(linear=0)
+        wait_time = self.at_distance * 2  # 1.5 # seconds
+        self.pass_time(wait_time)
+        
+        # stop at the intersection
+        self.stop()
+        self.pass_time(3)
+        
         # advance into intersection
         self.pub_straight(linear=0)
-        wait_time = self.at_distance * 2.5  # 1.5 # seconds
-        self.pass_time(wait_time)
+        self.pass_time(0.6)
 
         # turn at random
         if self.intersection_detected == 'INTER_R' and random.random() < 0.5:
@@ -222,8 +237,7 @@ class MovementControlNode(DTROS):
             continue
 
     def img_callback(self, msg):
-        self.detect_digits(msg)
-        self.detect_lane(msg)
+        self.image_msg = msg
         
     def detect_lane(self, msg):
         img = self.jpeg.decode(msg.data)
@@ -303,35 +317,42 @@ class MovementControlNode(DTROS):
                 closest = tag
 
         if closest:
-            # crop a square of the image above the apriltag
-            x_coords = [corner[0].astype(int) for corner in closest.corners]
-            y_coords = [corner[1].astype(int) for corner in closest.corners]
-            y_coords = y_coords - (y_coords[1] - y_coords[2] + 10) # Shift bounding box upward
-            
-            x_min = min(x_coords)
-            x_max = max(x_coords) + 1
-            y_min = min(y_coords)
-            y_max = max(y_coords) + 1
+            if not closest.tag_id in self.ats_found:
+                # stop the robot
+                self.stop()
+                self.pass_time(2)
+                
+                # crop a square image above the apriltag
+                x_coords = [corner[0].astype(int) for corner in closest.corners]
+                y_coords = [corner[1].astype(int) for corner in closest.corners]
+                y_coords = y_coords - (y_coords[1] - y_coords[2] + 10) # Shift bounding box upward
+                
+                x_min = min(x_coords)
+                x_max = max(x_coords) + 1
+                y_min = min(y_coords)
+                y_max = max(y_coords) + 1
         
-            cropped_image = image_gray[y_min:y_max, x_min:x_max]
+                cropped_image = image_gray[y_min:y_max, x_min:x_max]
         
-            # TODO: run digit detection on the cropped image
-            digit = "9"
+                # TODO: run digit detection on the cropped image
+                digit = "9"
             
-            # label the apriltag and digit
-            self.labelTag(image_np, closest)
-            self.labelDigit(image_np, digit, (x_min, y_min), (x_max, y_max))
-            
-            if not digit in self.digits_found:
+                # label the apriltag and digit
+                self.labelTag(image_np, closest)
+                self.labelDigit(image_np, digit, (x_min, y_min), (x_max, y_max))
             
                 # print the digit and coresponding apriltag location to the console
                 tag_x, tag_y = self.at_locations[closest.tag_id]
                 rospy.loginfo(f"DIGIT DETECTED\n\tdigit: {str(digit)}\n\tapriltag: {str(closest.tag_id)}\n\tposition (x,y): ({str(tag_x)}, {str(tag_y)})\n")
             
                 # terminate if all digits have been found
+                self.ats_found.add(closest.tag_id)
                 self.digits_found.add(digit)
                 if len(self.digits_found) == 10:
                     rospy.signal_shutdown()
+                    
+                # continue driving straight
+                self.pub_straight()
             
             # check if the apriltag is an intersection
             if closest.tag_id in self.intersections:
