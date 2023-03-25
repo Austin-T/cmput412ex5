@@ -34,7 +34,7 @@ class DigitDetectionNode(DTROS):
         self.INPUT_DIM = self.INPUT_H * self.INPUT_W
         self.OUTPUT_DIM = 10
 
-        self.model = CNN(self.INPUT_DIM, self.OUTPUT_DIM)
+        # self.model = CNN(self.INPUT_DIM, self.OUTPUT_DIM)
         self.predictor = DigitPredictor(self.INPUT_DIM, self.OUTPUT_DIM)
 
     def detect_digit(self, img_msg):
@@ -48,19 +48,42 @@ class DigitDetectionNode(DTROS):
 
         # reformat the image to the appropriate 28 * 28 size
         cv_image = cv2.resize(cv_image, (self.INPUT_H, self.INPUT_W))
-
-        # normalize the image
-        # cv_image = (cv_image - np.mean(cv_image)) / np.std(cv_image)
-
-        # TODO: predict the digit
+        cv_image = self.mask_img(cv_image)
+        # predict the digit
         digit = self.predictor.predict(cv_image)
-        # TODO: return the result
+        # return the result
         return digit
 
+    def blue_mask(self, image):
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        # blue colors
+        lower_range = np.array([97, 66, 133])
+        upper_range = np.array([108,255,255])
+        mask = cv2.inRange(hsv, lower_range, upper_range)
+        # With canny edge detection:
+        edged = cv2.Canny(mask, 30, 200)
 
-    def hook(self):
-        print("SHUTTING DOWN")
+        return mask
 
+    def mask_img(self, img):
+        # take in cv_image # if img is filename: im = cv2.imread(f'{img}')
+        im = self.blue_mask(img)
+
+        # add line(s) around border to prevent floodfilling the digits
+        cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
+        # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
+        # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
+        # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
+
+        im = cv2.copyMakeBorder(im, 1, 1, 1, 1, cv2.BORDER_CONSTANT, None, value = 0)
+        cv2.floodFill(im, None, (0, self.INPUT_W), 255)
+        cv2.floodFill(im, None, (self.INPUT_H, 0), 255)
+        cv2.floodFill(im, None, (0, 0), 255)
+        cv2.floodFill(im, None, (self.INPUT_H, self.INPUT_W), 255)
+        im = cv2.resize(im, (self.INPUT_H, self.INPUT_W))
+        im = cv2.bitwise_not(im)
+
+        return im
 
 if __name__ == "__main__":
     node = DigitDetectionNode("digit_detection_node")

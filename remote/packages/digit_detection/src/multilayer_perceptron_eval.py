@@ -14,6 +14,8 @@ from sklearn import manifold
 from tqdm.notebook import trange, tqdm
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
+import cv2
 
 import copy
 import random
@@ -89,18 +91,25 @@ class DigitPredictor:
         self.model = MLP(INPUT_DIM, OUTPUT_DIM)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.load_state_dict(torch.load('ex5-model.pt'))
-        self.model = self.model.to(device)
+        self.model = self.model.to(self.device)
 
         ROOT = '.data'
-        train_data = datasets.MNIST(root=ROOT,train=True,download=True,transform=train_transforms)
+        train_data = datasets.MNIST(root=ROOT,train=True,download=True)
         mean = train_data.data.float().mean() / 255
         std = train_data.data.float().std() / 255
+        train_transforms = transforms.Compose([
+                            transforms.RandomRotation(5, fill=(0,)),
+                            transforms.RandomCrop(28, padding=2),
+                            transforms.ToTensor(),
+                            transforms.Normalize(mean=[mean], std=[std])
+                                      ])
         self.input_transforms = transforms.Compose([ transforms.ToTensor(), transforms.Normalize(mean=[mean], std=[std])])
 
     def prepare_input(self, input):
-        # input is a cv_image
-        # need to add transforms/normalization of the input
-        tensor = self.input_transforms(input)
+        # input is a 28*28 cv_image. Convert to np array
+        # then transform to Tensor and Normalize
+        n = np.asarray(im)
+        tensor = self.input_transforms(n)
         return tensor
 
     def predict(self, input):
