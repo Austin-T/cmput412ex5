@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <package>
-  <name>duckiebot_detection</name>
+  <name>digit_detection</name>
   <version>1.0.0</version>
-  <description>Start Code for Exercise-4</description>
+  <description>Digit Detection for Exercise 5</description>
 
-  <maintainer email="zepeng@ualberta.ca"> Xiao </maintainer>
-  <author email="zepeng@ualberta.ca"> Xiao </author>
+  <maintainer email="famobiwo@ualberta.ca"> Xiao </maintainer>
+  <author email="tralnbe@ualberta.ca"> Xiao </author>
 
   <license>GPLv3</license>
 
