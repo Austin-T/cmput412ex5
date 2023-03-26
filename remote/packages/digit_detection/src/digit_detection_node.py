@@ -8,14 +8,14 @@ import sys
 from duckietown.dtros import DTROS, NodeType
 
 from sensor_msgs.msg import CompressedImage
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Int32
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from model import CNN
 from multilayer_perceptron_eval import DigitPredictor
 
-from digit_detection.srv import DetectionService
+from digit_detection.srv import DetectionService, DetectionServiceResponse
 
 
 class DigitDetectionNode(DTROS):
@@ -47,7 +47,7 @@ class DigitDetectionNode(DTROS):
         # convert image into cv2 type
         cv_image = None
         try:
-            cv_image = self.bridge.compressed_imgmsg_to_cv2(img_msg)
+            cv_image = self.bridge.compressed_imgmsg_to_cv2(img_msg.img)
         except CvBridgeError as e:
             self.log(e)
             return []
@@ -55,10 +55,12 @@ class DigitDetectionNode(DTROS):
         # reformat the image to the appropriate 28 * 28 size
         cv_image = cv2.resize(cv_image, (self.INPUT_H, self.INPUT_W))
         cv_image = self.mask_img(cv_image)
+        
         # predict the digit
         digit = self.predictor.predict(cv_image)
+        
         # return the result
-        return digit
+        return DetectionServiceResponse(Int32(digit))
 
     def blue_mask(self, image):
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)

@@ -11,7 +11,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from duckietown_msgs.msg import WheelsCmdStamped, Twist2DStamped, BoolStamped, VehicleCorners, LEDPattern
 from duckietown_msgs.srv import ChangePattern, SetCustomLEDPattern
-from digit_detection.srv import DetectionService
+from movement_control.srv import DetectionService
 from dt_apriltags import Detector, Detection
 import yaml
 import random
@@ -45,9 +45,10 @@ class MovementControlNode(DTROS):
             queue_size=1,
             buff_size="20MB")
         self.image_msg = None
+        
         # Services proxies
         rospy.wait_for_service(f'/{self.veh}/digit_detection_node/digit_detection_service')
-        self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh}/digit_detection_node/digit_detection_service', CompressedImage)
+        self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh}/digit_detection_node/digit_detection_service', DetectionService)
 
         # image processing tools
         self.bridge = CvBridge()
@@ -187,7 +188,7 @@ class MovementControlNode(DTROS):
 
         # advance into intersection
         self.pub_straight(linear=0)
-        self.pass_time(0.6)
+        self.pass_time(2)
 
         # turn at random
         if self.intersection_detected == 'INTER_R' and random.random() < 0.5:
@@ -330,15 +331,15 @@ class MovementControlNode(DTROS):
                 y_coords = [corner[1].astype(int) for corner in closest.corners]
                 y_coords = y_coords - (y_coords[1] - y_coords[2] + 10) # Shift bounding box upward
 
-                x_min = min(x_coords)
-                x_max = max(x_coords) + 1
-                y_min = min(y_coords)
-                y_max = max(y_coords) + 1
+                x_min = min(x_coords) - 10
+                x_max = max(x_coords) + 10
+                y_min = min(y_coords) - 20
+                y_max = max(y_coords) + 10
 
-                cropped_image = image_gray[y_min:y_max, x_min:x_max]
+                cropped_image = image_np[y_min:y_max, x_min:x_max]
 
-                # TODO: run digit detection on the cropped image
-                digit = "9"
+                # run digit detection on the cropped image
+                digit = self.get_digit(cropped_image)
 
                 # label the apriltag and digit
                 self.labelTag(image_np, closest)
@@ -373,6 +374,19 @@ class MovementControlNode(DTROS):
         augmented_image_msg.data = np.array(cv2.imencode('.jpg', image_np)[1]).tostring()
 
         self.image_pub.publish(augmented_image_msg)
+        
+    def get_digit(self, image):
+        
+        image_msg = CompressedImage(format="jpeg", data=cv2.imencode('.jpg', image)[1].tobytes())
+        
+        response = "None"
+        try:
+            response = self.digit_detection_service(image_msg)
+            response = str(response.digit.data)
+        except Exception as e:
+            rospy.loginfo(f"Encountered exception while calling digit detection service: {str(e)}")
+
+        return response
 
     def labelTag(self, image, tag):
 

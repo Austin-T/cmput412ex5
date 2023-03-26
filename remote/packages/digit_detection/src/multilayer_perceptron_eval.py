@@ -98,20 +98,20 @@ class DigitPredictor:
                                       ])
         self.input_transforms = transforms.Compose([ transforms.ToTensor(), transforms.Normalize(mean=[mean], std=[std])])
 
-    def prepare_input(self, input):
-        # input is a 28*28 cv_image. Convert to np array
+    def prepare_input(self, input_im):
+        # input_im is a 28*28 cv_image. Convert to np array
         # then transform to Tensor and Normalize
-        n = np.asarray(im)
+        n = np.asarray(input_im)
         tensor = self.input_transforms(n)
         return tensor
 
-    def predict(self, input):
-        input = self.prepare_input(input) # convert from cv image to tensor
-        input = input.to(self.device)
+    def predict(self, input_im):
+        input_im = self.prepare_input(input_im) # convert from cv image to tensor
+        input_im = input_im.to(self.device)
         #y_pred, _ = self.model(input)
 
         with torch.no_grad():
-            output, _ = self.model(input)
+            output, _ = self.model(input_im)
         pred = output.argmax().item()
 
         return pred
