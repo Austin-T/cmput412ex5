@@ -13,6 +13,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from model import CNN
 from multilayer_perceptron_eval import DigitPredictor
+from digit_detection.srv import DetectionService
 
 
 class DigitDetectionNode(DTROS):
@@ -23,7 +24,7 @@ class DigitDetectionNode(DTROS):
         self.veh = rospy.get_param("~veh")
 
         # Services
-        self.service = rospy.Service(f'/{self.veh}/digit_detection_node/digit_detection_service', CompressedImage, self.detect_digit)
+        self.service = rospy.Service(f'/{self.veh}/digit_detection_node/digit_detection_service', DetectionService, self.detect_digit)
 
         # image processing tools
         self.bridge = CvBridge()
