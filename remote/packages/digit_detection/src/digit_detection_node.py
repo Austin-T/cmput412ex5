@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
+import rospkg
 import sys
 #sys.path.append('./dt_msgs')
 
@@ -13,6 +14,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from model import CNN
 from multilayer_perceptron_eval import DigitPredictor
+
 from digit_detection.srv import DetectionService
 
 
@@ -22,6 +24,7 @@ class DigitDetectionNode(DTROS):
         super(DigitDetectionNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
         self.node_name = node_name
         self.veh = rospy.get_param("~veh")
+        self.model_name = rospy.get_param("~model")
 
         # Services
         self.service = rospy.Service(f'/{self.veh}/digit_detection_node/digit_detection_service', DetectionService, self.detect_digit)
@@ -35,8 +38,10 @@ class DigitDetectionNode(DTROS):
         self.INPUT_DIM = self.INPUT_H * self.INPUT_W
         self.OUTPUT_DIM = 10
 
-        # self.model = CNN(self.INPUT_DIM, self.OUTPUT_DIM)
-        self.predictor = DigitPredictor(self.INPUT_DIM, self.OUTPUT_DIM)
+        self.rospack = rospkg.RosPack()
+        model_path = self.rospack.get_path("digit_detection") + "/src/" + self.model_name
+        
+        self.predictor = DigitPredictor(model_path, self.INPUT_DIM, self.OUTPUT_DIM)
 
     def detect_digit(self, img_msg):
         # convert image into cv2 type
@@ -88,4 +93,4 @@ class DigitDetectionNode(DTROS):
 
 if __name__ == "__main__":
     node = DigitDetectionNode("digit_detection_node")
-    node.run()
+    rospy.spin()
