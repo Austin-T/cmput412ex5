@@ -74,7 +74,7 @@ class CNN(nn.Module):
         return F.log_softmax(x, dim=1)
 
 class DigitPredictor:
-    def __init__(self, input_dim=None, output_dim=None):
+    def __init__(self, model_path, input_dim=None, output_dim=None):
         INPUT_DIM = 28 * 28
         OUTPUT_DIM = 10
         if input_dim is not None:
@@ -83,7 +83,7 @@ class DigitPredictor:
         self.model = MLP(INPUT_DIM, OUTPUT_DIM)
         # self.model = CNN()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model.load_state_dict(torch.load('ex5-model.pt'))
+        self.model.load_state_dict(torch.load(model_path))
         self.model = self.model.to(self.device)
 
         ROOT = '.data'
@@ -115,3 +115,4 @@ class DigitPredictor:
         pred = output.argmax().item()
 
         return pred
+
