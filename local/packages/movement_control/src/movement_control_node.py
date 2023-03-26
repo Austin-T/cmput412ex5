@@ -11,9 +11,11 @@ from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from duckietown_msgs.msg import WheelsCmdStamped, Twist2DStamped, BoolStamped, VehicleCorners, LEDPattern
 from duckietown_msgs.srv import ChangePattern, SetCustomLEDPattern
+from digit_detection.srv import DetectionService
 from dt_apriltags import Detector, Detection
 import yaml
 import random
+
 
 ROAD_MASK = [(20, 60, 0), (50, 255, 255)]  # for yellow mask
 DEBUG = False
@@ -45,7 +47,7 @@ class MovementControlNode(DTROS):
 
         # Services proxies
         rospy.wait_for_service(f'/{self.veh_name}/digit_detection_node/digit_detection_service')
-        self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh_name}/digit_detection_node/digit_detection_service', CompressedImage)
+        self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh_name}/digit_detection_node/digit_detection_service', DetectionService)
 
         # image processing tools
         self.bridge = CvBridge()

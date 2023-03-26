@@ -6,8 +6,31 @@ find_package(catkin REQUIRED COMPONENTS
   duckietown_msgs
   roscpp
   rospy
+  message_generation
 )
 
+catkin_python_setup()
 
-catkin_package()
+add_service_files(
+  FILES
+  DetectionService.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  duckietown_msgs
+)
+
+add_dependencies(${catkin_EXPORTED_TARGETS})
+
+catkin_package(
+  CATKIN_DEPENDS
+  message_runtime
+)
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+
 
