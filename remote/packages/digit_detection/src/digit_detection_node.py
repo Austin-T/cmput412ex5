@@ -12,7 +12,6 @@ from std_msgs.msg import Float32, Int32
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
-from model import CNN
 from multilayer_perceptron_eval import DigitPredictor
 
 from digit_detection.srv import DetectionService, DetectionServiceResponse
