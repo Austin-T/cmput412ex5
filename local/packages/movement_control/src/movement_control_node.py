@@ -42,10 +42,10 @@ class MovementControlNode(DTROS):
             self.img_callback,
             queue_size=1,
             buff_size="20MB")
-
+        self.image_msg = None
         # Services proxies
-        rospy.wait_for_service(f'/{self.veh_name}/digit_detection_node/digit_detection_service')
-        self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh_name}/digit_detection_node/digit_detection_service', CompressedImage)
+        rospy.wait_for_service(f'/{self.veh}/digit_detection_node/digit_detection_service')
+        self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh}/digit_detection_node/digit_detection_service', CompressedImage)
 
         # image processing tools
         self.bridge = CvBridge()
@@ -141,8 +141,9 @@ class MovementControlNode(DTROS):
             i += 1
 
             if i % 4 == 0:
-               self.detect_digits(self.image_msg)
-               self.detect_lane(self.image_msg)
+                if self.image_msg is not None:
+                    self.detect_digits(self.image_msg)
+                    self.detect_lane(self.image_msg)
 
             if self.intersection_detected:
                 self.intersection_sequence()

@@ -54,32 +54,24 @@ class MLP(nn.Module):
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(
-                in_channels=1,
-                out_channels=16,
-                kernel_size=5,
-                stride=1,
-                padding=2,
-            ),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
-        )
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(16, 32, 5, 1, 2),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-        )
-        # fully connected layer, output 10 classes
-        self.out = nn.Linear(32 * 7 * 7, 10)
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
+        self.conv2 = nn.Conv2d(32, 32, kernel_size=5)
+        self.conv3 = nn.Conv2d(32,64, kernel_size=5)
+        self.fc1 = nn.Linear(3*3*64, 256)
+        self.fc2 = nn.Linear(256, 10)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
-        x = x.view(x.size(0), -1)
-        output = self.out(x)
-        return output, x    # return x for visualization
+        x = F.relu(self.conv1(x))
+        #x = F.dropout(x, p=0.5, training=self.training)
+        x = F.relu(F.max_pool2d(self.conv2(x), 2))
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.relu(F.max_pool2d(self.conv3(x),2))
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = x.view(-1,3*3*64 )
+        x = F.relu(self.fc1(x))
+        x = F.dropout(x, training=self.training)
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
 
 class DigitPredictor:
     def __init__(self, input_dim=None, output_dim=None):
@@ -89,6 +81,7 @@ class DigitPredictor:
             INPUT_DIM = input_dim
             OUTPUT_DIM = output_dim
         self.model = MLP(INPUT_DIM, OUTPUT_DIM)
+        # self.model = CNN()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.load_state_dict(torch.load('ex5-model.pt'))
         self.model = self.model.to(self.device)
