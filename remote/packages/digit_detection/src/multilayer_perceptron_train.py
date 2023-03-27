@@ -4,16 +4,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data
+from torch.utils.data import Dataset, DataLoader
 
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
+from multilayer_perceptron import MLP
 
-from sklearn import metrics
-from sklearn import decomposition
-from sklearn import manifold
-from tqdm.notebook import trange, tqdm
 import matplotlib.pyplot as plt
 import numpy as np
+import glob
+import cv2
 
 import copy
 import random
@@ -27,181 +25,49 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
-
-ROOT = '.data'
-
-train_data = datasets.MNIST(root=ROOT,
-                            train=True,
-                            download=True)
-
-"""
-Normalizing our data allows our models to train faster and to also help them avoid local minima, i.e. train more reliably.
-"""
-
-mean = train_data.data.float().mean() / 255
-std = train_data.data.float().std() / 255
-
-# print(f'Calculated mean: {mean}')
-# print(f'Calculated std: {std}')
-
-
-train_transforms = transforms.Compose([
-                            transforms.RandomRotation(5, fill=(0,)),
-                            transforms.RandomCrop(28, padding=2),
-                            transforms.ToTensor(),
-                            transforms.Normalize(mean=[mean], std=[std])
-                                      ])
-
-test_transforms = transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize(mean=[mean], std=[std])
-                                     ])
-
-train_data = datasets.MNIST(root=ROOT,
-                            train=True,
-                            download=True,
-                            transform=train_transforms)
-
-test_data = datasets.MNIST(root=ROOT,
-                           train=False,
-                           download=True,
-                           transform=test_transforms)
-
-# print(f'Number of training examples: {len(train_data)}')
-# print(f'Number of testing examples: {len(test_data)}')
-
-
-def plot_images(images):
-
-    n_images = len(images)
-
-    rows = int(np.sqrt(n_images))
-    cols = int(np.sqrt(n_images))
-
-    fig = plt.figure()
-    for i in range(rows*cols):
-        ax = fig.add_subplot(rows, cols, i+1)
-        ax.imshow(images[i].view(28, 28).cpu().numpy(), cmap='bone')
-        ax.axis('off')
-
-
-N_IMAGES = 25
-
-images = [image for image, label in [train_data[i] for i in range(N_IMAGES)]]
-
-# plot_images(images)
-
-VALID_RATIO = 0.9
-
-n_train_examples = int(len(train_data) * VALID_RATIO)
-n_valid_examples = len(train_data) - n_train_examples
-
-train_data, valid_data = data.random_split(train_data,
-                                           [n_train_examples, n_valid_examples])
-
-# print(f'Number of training examples: {len(train_data)}')
-# print(f'Number of validation examples: {len(valid_data)}')
-# print(f'Number of testing examples: {len(test_data)}')
-
-
-N_IMAGES = 25
-
-images = [image for image, label in [valid_data[i] for i in range(N_IMAGES)]]
-
-# plot_images(images)
-
-valid_data = copy.deepcopy(valid_data)
-valid_data.dataset.transform = test_transforms
-
-N_IMAGES = 25
-
-images = [image for image, label in [valid_data[i] for i in range(N_IMAGES)]]
-
-# plot_images(images)
-
-BATCH_SIZE = 64
-
-train_iterator = data.DataLoader(train_data,
-                                 shuffle=True,
-                                 batch_size=BATCH_SIZE)
-
-valid_iterator = data.DataLoader(valid_data,
-                                 batch_size=BATCH_SIZE)
-
-test_iterator = data.DataLoader(test_data,
-                                batch_size=BATCH_SIZE)
-
-class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super().__init__()
-
-        self.input_fc = nn.Linear(input_dim, 250)
-        self.hidden_fc = nn.Linear(250, 100)
-        self.output_fc = nn.Linear(100, output_dim)
-
-    def forward(self, x):
-        # x = [batch size, height, width]
-        batch_size = x.shape[0]
-        x = x.view(batch_size, -1)
-        # x = [batch size, height * width]
-        h_1 = F.relu(self.input_fc(x))
-        # h_1 = [batch size, 250]
-        h_2 = F.relu(self.hidden_fc(h_1))
-        # h_2 = [batch size, 100]
-        y_pred = self.output_fc(h_2)
-        # y_pred = [batch size, output dim]
-        return y_pred, h_2
-
-class CNN(nn.Module):
+class CustomDataset(Dataset):
     def __init__(self):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(
-                in_channels=1,
-                out_channels=16,
-                kernel_size=5,
-                stride=1,
-                padding=2,
-            ),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
-        )
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(16, 32, 5, 1, 2),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-        )
-        # fully connected layer, output 10 classes
-        self.out = nn.Linear(32 * 7 * 7, 10)
+        self.imgs_path = "test_images/"
+        file_list = glob.glob(self.imgs_path + "*")
+        # print(file_list)
+        
+        self.data = []
+        for class_path in file_list:
+            class_name = class_path.split("/")[-1]
+            for img_path in glob.glob(class_path + "/*.jpg"):
+                self.data.append([img_path, class_name])
+        # print(self.data)
+        
+        self.class_map = {
+            "0": 0, 
+            "1": 1, 
+            "2": 2, 
+            "3": 3, 
+            "4": 4, 
+            "5": 5, 
+            "6": 6, 
+            "7": 7, 
+            "8": 8, 
+            "9": 9
+        }
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        # flatten the output of conv2 to (batch_size, 32 * 7 * 7)
-        x = x.view(x.size(0), -1)
-        output = self.out(x)
-        return output, x    # return x for visualization
-
-INPUT_DIM = 28 * 28
-OUTPUT_DIM = 10
-
-## change the model
-model = MLP(INPUT_DIM, OUTPUT_DIM)
-
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-# print(f'The model has {count_parameters(model):,} trainable parameters')
-
-optimizer = optim.Adam(model.parameters())
-
-criterion = nn.CrossEntropyLoss()
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-model = model.to(device)
-criterion = criterion.to(device)
-
+        self.img_dim = (28, 28)
+    
+    def __len__(self):
+        return len(self.data)
+        
+    def __getitem__(self, idx):
+        img_path, class_name = self.data[idx]
+        
+        img = cv2.imread(img_path)
+        img = cv2.resize(img, self.img_dim)
+        img_tensor = torch.from_numpy(img)
+        
+        class_id = self.class_map[class_name]
+        class_id = torch.tensor(class_id)
+        
+        return img_tensor.float(), class_id
+        
 def calculate_accuracy(y_pred, y):
     top_pred = y_pred.argmax(1, keepdim=True)
     correct = top_pred.eq(y.view_as(top_pred)).sum()
@@ -215,7 +81,7 @@ def train(model, iterator, optimizer, criterion, device):
 
     model.train()
 
-    for (x, y) in tqdm(iterator, desc="Training", leave=False):
+    for (x, y) in iterator:
 
         x = x.to(device)
         y = y.to(device)
@@ -246,7 +112,7 @@ def evaluate(model, iterator, criterion, device):
 
     with torch.no_grad():
 
-        for (x, y) in tqdm(iterator, desc="Evaluating", leave=False):
+        for (x, y) in iterator:
 
             x = x.to(device)
             y = y.to(device)
@@ -270,11 +136,54 @@ def epoch_time(start_time, end_time):
     return elapsed_mins, elapsed_secs
 
 
-EPOCHS = 10
+dataset = CustomDataset()
+
+TRAIN_RATIO = 0.7
+VALID_RATIO = 0.5
+
+n_train_examples = int(len(dataset) * TRAIN_RATIO)
+n_valid_examples = int((len(dataset) - n_train_examples) * VALID_RATIO)
+n_test_examples = int(len(dataset) - n_train_examples - n_valid_examples)
+
+train_data, valid_data, test_data = data.random_split(dataset, [n_train_examples, n_valid_examples, n_test_examples])
+
+print(f'Number of training examples: {len(train_data)}')
+print(f'Number of validation examples: {len(valid_data)}')
+print(f'Number of testing examples: {len(test_data)}')
+
+BATCH_SIZE = 64
+train_iterator = data.DataLoader(train_data,
+                                 shuffle=True,
+                                 batch_size=BATCH_SIZE)
+
+valid_iterator = data.DataLoader(valid_data,
+                                 batch_size=BATCH_SIZE)
+
+test_iterator = data.DataLoader(test_data,
+                                batch_size=BATCH_SIZE)
+
+
+
+INPUT_DIM = 28 * 28 * 3
+OUTPUT_DIM = 10
+
+model = MLP(INPUT_DIM, OUTPUT_DIM)
+
+optimizer = optim.Adam(model.parameters())
+
+criterion = nn.CrossEntropyLoss()
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+model = model.to(device)
+criterion = criterion.to(device)
+
+
+EPOCHS = 20
 
 best_valid_loss = float('inf')
 
-for epoch in trange(EPOCHS):
+for epoch in range(EPOCHS):
 
     start_time = time.monotonic()
 
@@ -294,8 +203,6 @@ for epoch in trange(EPOCHS):
     print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc*100:.2f}%')
 
 
-"""Afterwards, we load our the parameters of the model that achieved the best validation loss
-and then use this to evaluate our model on the test set."""
 model.load_state_dict(torch.load('ex5-model.pt'))
 test_loss, test_acc = evaluate(model, test_iterator, criterion, device)
 print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_acc*100:.2f}%')

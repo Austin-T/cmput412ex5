@@ -34,7 +34,7 @@ class DigitDetectionNode(DTROS):
         # MLP model
         self.INPUT_H = 28
         self.INPUT_W = 28
-        self.INPUT_DIM = self.INPUT_H * self.INPUT_W
+        self.INPUT_DIM = self.INPUT_H * self.INPUT_W * 3
         self.OUTPUT_DIM = 10
 
         self.rospack = rospkg.RosPack()
@@ -52,8 +52,8 @@ class DigitDetectionNode(DTROS):
             return []
 
         # reformat the image to the appropriate 28 * 28 size
-        cv_image = cv2.resize(cv_image, (self.INPUT_H, self.INPUT_W))
-        cv_image = self.mask_img(cv_image)
+        # cv_image = cv2.resize(cv_image, (self.INPUT_H, self.INPUT_W))
+        # cv_image = self.mask_img(cv_image)
         
         # predict the digit
         digit = self.predictor.predict(cv_image)
