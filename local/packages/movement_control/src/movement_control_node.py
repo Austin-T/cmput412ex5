@@ -46,7 +46,7 @@ class MovementControlNode(DTROS):
             queue_size=1,
             buff_size="20MB")
         self.image_msg = None
-        
+
         # Services proxies
         rospy.wait_for_service(f'/{self.veh}/digit_detection_node/digit_detection_service')
         self.digit_detection_service = rospy.ServiceProxy(f'/{self.veh}/digit_detection_node/digit_detection_service', DetectionService)
@@ -112,6 +112,8 @@ class MovementControlNode(DTROS):
 
         # set of found digits and apriltags
         self.ats_found = {}
+        # tag id for debugging
+        self.at_tag_id = ""
 
         # apriltag detection filters
         self.decision_threshold = 7
@@ -175,7 +177,7 @@ class MovementControlNode(DTROS):
 
     def intersection_sequence(self):
 
-        rospy.loginfo("INTERSECTION DETECTED. at {} INTERSECTION DETECTED. INTERSECTION DETECTED.".format(str(self.at_distance)))
+        rospy.loginfo("INTERSECTION DETECTED. at {}".format(str(self.at_distance)))
 
         # advance to intersection
         self.pub_straight(linear=0)
@@ -330,37 +332,42 @@ class MovementControlNode(DTROS):
             x_max = max(x_coords) + 10
             y_min = min(y_coords) - 20
             y_max = max(y_coords) + 10
-                
+
             digit = "None"
-            if closest.tag_id in self.ats_found:
-                digit = self.ats_found[closest.tag_id]
-                
-            else:
-                # stop the robot
-                self.stop()
-                
-                # grab a new camera image
-                self.pass_time(2)
-                new_image = self.bridge.compressed_imgmsg_to_cv2(self.image_msg)
-                new_image = cv2.undistort(new_image, self.K, self.DC, None, newcameramtx)
 
-                # run digit detection on the cropped image
-                cropped_image = new_image[y_min:y_max, x_min:x_max]
-                digit = self.get_digit(cropped_image)
+            # if closest.tag_id in self.ats_found:
+                # digit = self.ats_found[closest.tag_id]
 
-                # print the digit and coresponding apriltag location to the console
-                tag_x, tag_y = self.at_locations[closest.tag_id]
-                rospy.loginfo(f"DIGIT DETECTED\n\tdigit: {str(digit)}\n\tapriltag: {str(closest.tag_id)}\n\tposition (x,y): ({str(tag_x)}, {str(tag_y)})\n")
-                
+            # else:
+            # stop the robot
+            self.stop()
 
-                # terminate if all digits have been found
-                self.ats_found[closest.tag_id] = digit
-                if len(self.ats_found) == 10:
-                    rospy.signal_shutdown()
+            # grab a new camera image
+            self.pass_time(2)
+            new_image = self.bridge.compressed_imgmsg_to_cv2(self.image_msg)
+            new_image = cv2.undistort(new_image, self.K, self.DC, None, newcameramtx)
 
-                # continue driving straight
-                self.pub_straight()
-                
+            # run digit detection on the cropped image
+            cropped_image = new_image[y_min:y_max, x_min:x_max]
+            digit = self.get_digit(cropped_image)
+
+            # update tag id
+            self.at_tag_id = str(closest.tag_id)
+
+            # print the digit and coresponding apriltag location to the console
+            tag_x, tag_y = self.at_locations[closest.tag_id]
+            rospy.loginfo(f"DIGIT DETECTED\n\tdigit: {str(digit)}\n\tapriltag: {str(closest.tag_id)}\n\tposition (x,y): ({str(tag_x)}, {str(tag_y)})\n")
+
+
+            # terminate if all digits have been found
+            self.ats_found[closest.tag_id] = digit
+            rospy.loginfo("{} apriltags found".format(str(len(self.ats_found))))
+            if len(self.ats_found) == 10:
+                rospy.signal_shutdown()
+
+            # continue driving straight # derivative kick avoidance
+            # self.pub_straight()
+
             # label the apriltag and digit
             self.labelTag(image_np, closest)
             self.labelDigit(image_np, digit, (x_min, y_min), (x_max, y_max))
@@ -381,14 +388,14 @@ class MovementControlNode(DTROS):
         augmented_image_msg.data = np.array(cv2.imencode('.jpg', image_np)[1]).tostring()
 
         self.image_pub.publish(augmented_image_msg)
-        
+
     def get_digit(self, image):
-                    
+
         image_msg = CompressedImage(format="jpeg", data=cv2.imencode('.jpg', image)[1].tobytes())
-        
+
         if self.pub_debug_img_bool:
             self.debug_pub.publish(image_msg)
-        
+
         response = "None"
         try:
             response = self.digit_detection_service(image_msg)
