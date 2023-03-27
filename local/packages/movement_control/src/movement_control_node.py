@@ -35,6 +35,7 @@ class MovementControlNode(DTROS):
         self.vel_pub = rospy.Publisher(
             "/" + self.veh + "/car_cmd_switch_node/cmd", Twist2DStamped, queue_size=1)
         self.image_pub = rospy.Publisher(f'/{self.veh}/{node_name}/augmented_image/image/compressed', CompressedImage, queue_size=16)
+        self.debug_pub = rospy.Publisher(f'/{self.veh}/{node_name}/debug_image/image/compressed', CompressedImage, queue_size=16)
         self.pub_debug_img_bool = True
 
         # Subscribers
@@ -110,12 +111,11 @@ class MovementControlNode(DTROS):
         }
 
         # set of found digits and apriltags
-        self.digits_found = set()
-        self.ats_found = set()
+        self.ats_found = {}
 
         # apriltag detection filters
-        self.decision_threshold = 10
-        self.z_threshold = 0.35
+        self.decision_threshold = 7
+        self.z_threshold = 0.45
 
         # PID Variables for driving
         self.proportional = None
@@ -143,7 +143,7 @@ class MovementControlNode(DTROS):
         while not rospy.is_shutdown():
             i += 1
 
-            if i % 4 == 0:
+            if i % 4 == 0 or self.intersection_detected:
                 if self.image_msg is not None:
                     self.detect_digits(self.image_msg)
                     self.detect_lane(self.image_msg)
@@ -179,7 +179,7 @@ class MovementControlNode(DTROS):
 
         # advance to intersection
         self.pub_straight(linear=0)
-        wait_time = self.at_distance * 2  # 1.5 # seconds
+        wait_time = self.at_distance * 1.5 # seconds
         self.pass_time(wait_time)
 
         # stop at the intersection
@@ -211,7 +211,7 @@ class MovementControlNode(DTROS):
         self.twist.omega = -12
         self.vel_pub.publish(self.twist)
         start_time = rospy.get_time()
-        while rospy.get_time() < start_time + 1:
+        while rospy.get_time() < start_time + 1.5:
             continue
         self.stop()
 
@@ -221,7 +221,7 @@ class MovementControlNode(DTROS):
         self.twist.omega = 12
         self.vel_pub.publish(self.twist)
         start_time = rospy.get_time()
-        while rospy.get_time() < start_time + 1:
+        while rospy.get_time() < start_time + 1.5:
             continue
         self.stop()
 
@@ -321,42 +321,49 @@ class MovementControlNode(DTROS):
                 closest = tag
 
         if closest:
-            if not closest.tag_id in self.ats_found:
+            # create a square above the apriltag
+            x_coords = [corner[0].astype(int) for corner in closest.corners]
+            y_coords = [corner[1].astype(int) for corner in closest.corners]
+            y_coords = y_coords - (y_coords[1] - y_coords[2] + 10) # Shift bounding box upward
+
+            x_min = min(x_coords) - 10
+            x_max = max(x_coords) + 10
+            y_min = min(y_coords) - 20
+            y_max = max(y_coords) + 10
+                
+            digit = "None"
+            if closest.tag_id in self.ats_found:
+                digit = self.ats_found[closest.tag_id]
+                
+            else:
                 # stop the robot
                 self.stop()
+                
+                # grab a new camera image
                 self.pass_time(2)
-
-                # crop a square image above the apriltag
-                x_coords = [corner[0].astype(int) for corner in closest.corners]
-                y_coords = [corner[1].astype(int) for corner in closest.corners]
-                y_coords = y_coords - (y_coords[1] - y_coords[2] + 10) # Shift bounding box upward
-
-                x_min = min(x_coords) - 10
-                x_max = max(x_coords) + 10
-                y_min = min(y_coords) - 20
-                y_max = max(y_coords) + 10
-
-                cropped_image = image_np[y_min:y_max, x_min:x_max]
+                new_image = self.bridge.compressed_imgmsg_to_cv2(self.image_msg)
+                new_image = cv2.undistort(new_image, self.K, self.DC, None, newcameramtx)
 
                 # run digit detection on the cropped image
+                cropped_image = new_image[y_min:y_max, x_min:x_max]
                 digit = self.get_digit(cropped_image)
-
-                # label the apriltag and digit
-                self.labelTag(image_np, closest)
-                self.labelDigit(image_np, digit, (x_min, y_min), (x_max, y_max))
 
                 # print the digit and coresponding apriltag location to the console
                 tag_x, tag_y = self.at_locations[closest.tag_id]
                 rospy.loginfo(f"DIGIT DETECTED\n\tdigit: {str(digit)}\n\tapriltag: {str(closest.tag_id)}\n\tposition (x,y): ({str(tag_x)}, {str(tag_y)})\n")
+                
 
                 # terminate if all digits have been found
-                self.ats_found.add(closest.tag_id)
-                self.digits_found.add(digit)
-                if len(self.digits_found) == 10:
+                self.ats_found[closest.tag_id] = digit
+                if len(self.ats_found) == 10:
                     rospy.signal_shutdown()
 
                 # continue driving straight
                 self.pub_straight()
+                
+            # label the apriltag and digit
+            self.labelTag(image_np, closest)
+            self.labelDigit(image_np, digit, (x_min, y_min), (x_max, y_max))
 
             # check if the apriltag is an intersection
             if closest.tag_id in self.intersections:
@@ -376,8 +383,11 @@ class MovementControlNode(DTROS):
         self.image_pub.publish(augmented_image_msg)
         
     def get_digit(self, image):
-        
+                    
         image_msg = CompressedImage(format="jpeg", data=cv2.imencode('.jpg', image)[1].tobytes())
+        
+        if self.pub_debug_img_bool:
+            self.debug_pub.publish(image_msg)
         
         response = "None"
         try:
@@ -416,7 +426,7 @@ class MovementControlNode(DTROS):
         # label the digit
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_size = 1.5
-        thickness = 2
+        thickness = 3
 
         cv2.putText(image, str(digit), pt2, font, font_size, (255, 0, 0), thickness)
 
