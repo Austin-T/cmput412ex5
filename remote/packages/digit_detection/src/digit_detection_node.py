@@ -34,7 +34,7 @@ class DigitDetectionNode(DTROS):
         # MLP model
         self.INPUT_H = 28
         self.INPUT_W = 28
-        self.INPUT_DIM = self.INPUT_H * self.INPUT_W * 3
+        self.INPUT_DIM = self.INPUT_H * self.INPUT_W
         self.OUTPUT_DIM = 10
 
         self.rospack = rospkg.RosPack()

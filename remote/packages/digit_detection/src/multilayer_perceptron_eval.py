@@ -18,7 +18,7 @@ import time
 
 class DigitPredictor:
     def __init__(self, model_path, input_dim=None, output_dim=None):
-        INPUT_DIM = 28 * 28 * 3
+        INPUT_DIM = 28 * 28
         OUTPUT_DIM = 10
         if input_dim is not None:
             INPUT_DIM = input_dim
@@ -47,6 +47,7 @@ class DigitPredictor:
         # then transform to Tensor and Normalize
         
         input_im = cv2.resize(input_im, (28, 28))
+        input_im = cv2.cvtColor(input_im, cv2.COLOR_BGR2GRAY)
         input_im = np.expand_dims(input_im, 0)
         img_tensor = torch.from_numpy(input_im)
         
@@ -62,7 +63,6 @@ class DigitPredictor:
         with torch.no_grad():
             output, _ = self.model(input_im)
             
-        print("Output: " + str(output))
         pred = output.argmax().item()
 
         return pred

@@ -25,6 +25,43 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
+
+def blue_mask(image):
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        # blue colors
+        lower_range = np.array([86, 153, 138])
+        upper_range = np.array([179,255,255])
+        mask = cv2.inRange(hsv, lower_range, upper_range)
+        # With canny edge detection:
+        edged = cv2.Canny(mask, 30, 200)
+
+        return mask
+
+def mask_img(img):
+    # take in cv_image # if img is filename: im = cv2.imread(f'{img}')
+    im = blue_mask(img)
+
+    # add line(s) around border to prevent floodfilling the digits
+    cv2.line(im, (0,28), (28,28), (255, 255, 255), 1)
+    # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
+    # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
+    # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
+    cv2.imshow("image", im)
+    cv2.waitKey(7000)
+    cv2.destroyWindow("image")
+    
+    im = cv2.copyMakeBorder(im, 1, 1, 1, 1, cv2.BORDER_CONSTANT, None, value = 0)
+    cv2.floodFill(im, None, (0, 28), 255)
+    cv2.floodFill(im, None, (28, 0), 255)
+    cv2.floodFill(im, None, (0, 0), 255)
+    cv2.floodFill(im, None, (28, 28), 255)
+    im = cv2.resize(im, (28, 28))
+    im = cv2.bitwise_not(im)
+    
+    
+    
+    return im
+        
 class CustomDataset(Dataset):
     def __init__(self):
         self.imgs_path = "test_images/"
@@ -61,6 +98,8 @@ class CustomDataset(Dataset):
         
         img = cv2.imread(img_path)
         img = cv2.resize(img, self.img_dim)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        #img = mask_img(img)
         img_tensor = torch.from_numpy(img)
         
         class_id = self.class_map[class_name]
@@ -164,7 +203,7 @@ test_iterator = data.DataLoader(test_data,
 
 
 
-INPUT_DIM = 28 * 28 * 3
+INPUT_DIM = 28 * 28
 OUTPUT_DIM = 10
 
 model = MLP(INPUT_DIM, OUTPUT_DIM)
@@ -179,7 +218,7 @@ model = model.to(device)
 criterion = criterion.to(device)
 
 
-EPOCHS = 20
+EPOCHS = 10
 
 best_valid_loss = float('inf')
 
