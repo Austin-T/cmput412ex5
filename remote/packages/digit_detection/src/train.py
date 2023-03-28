@@ -26,7 +26,7 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
-DEBUG = True
+DEBUG = False
 
 def blue_mask(image):
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
