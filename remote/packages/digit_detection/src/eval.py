@@ -17,7 +17,7 @@ import copy
 import random
 import time
 
-model_is_cnn = True
+model_is_mlp = False
 
 def blue_mask(image):
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -44,8 +44,11 @@ class DigitPredictor:
         if input_dim is not None:
             INPUT_DIM = input_dim
             OUTPUT_DIM = output_dim
-        # self.model = MLP(INPUT_DIM, OUTPUT_DIM)
-        self.model = CNN()
+        self.model = None
+        if model_is_mlp:
+            self.model = MLP(INPUT_DIM, OUTPUT_DIM)
+        else:
+            self.model = CNN()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.load_state_dict(torch.load(model_path))
         self.model = self.model.to(self.device)
@@ -80,7 +83,10 @@ class DigitPredictor:
         input_im = input_im.to(self.device)
 
         with torch.no_grad():
-            output, _ = self.model(input_im)
+            if model_is_mlp:
+                output, _ = self.model(input_im)
+            else:
+                output = self.model(input_im)
 
         pred = output.argmax().item()
 

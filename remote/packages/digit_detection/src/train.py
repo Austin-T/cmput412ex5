@@ -27,7 +27,7 @@ torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
 DEBUG = False
-model_is_cnn = True
+model_is_mlp = False
 
 def blue_mask(image):
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -129,8 +129,10 @@ def train(model, iterator, optimizer, criterion, device):
 
         optimizer.zero_grad()
 
-        # y_pred, _ = model(x) # for MLP
-        y_pred = model(x) # for CNN
+        if model_is_mlp:
+            y_pred, _ = model(x) # for MLP
+        else:
+            y_pred = model(x) # for CNN
 
         loss = criterion(y_pred, y)
 
@@ -159,8 +161,10 @@ def evaluate(model, iterator, criterion, device):
             x = x.to(device)
             y = y.to(device)
 
-            # y_pred, _ = model(x) # for MLP
-            y_pred = model(x) # for CNN
+            if model_is_mlp:
+                y_pred, _ = model(x) # for MLP
+            else:
+                y_pred = model(x) # for CNN
 
             loss = criterion(y_pred, y)
 
@@ -194,8 +198,12 @@ print(f'Number of training examples: {len(train_data)}')
 print(f'Number of validation examples: {len(valid_data)}')
 print(f'Number of testing examples: {len(test_data)}')
 
-# BATCH_SIZE = 64 # for MLP
 BATCH_SIZE = 1 # for CNN
+
+if model_is_mlp:
+    BATCH_SIZE = 64 # for MLP
+else:
+    BATCH_SIZE = 1 # for CNN
 
 train_iterator = data.DataLoader(train_data,
                                  shuffle=True,
@@ -212,8 +220,11 @@ test_iterator = data.DataLoader(test_data,
 INPUT_DIM = 28 * 28
 OUTPUT_DIM = 10
 
-# model = MLP(INPUT_DIM, OUTPUT_DIM)
-model = CNN()
+model = None
+if model_is_mlp:
+    model = MLP(INPUT_DIM, OUTPUT_DIM)
+else:
+    model = CNN()
 
 optimizer = optim.Adam(model.parameters())
 
