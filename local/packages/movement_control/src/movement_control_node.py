@@ -354,8 +354,8 @@ class MovementControlNode(DTROS):
 
             if len(cropped_image) == 0:
                 rospy.loginfo("Empty crop.")
-                continue
-                
+                return
+
             digit = self.get_digit(cropped_image)
 
             # update tag id
