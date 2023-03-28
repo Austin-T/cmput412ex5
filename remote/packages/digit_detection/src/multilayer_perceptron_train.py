@@ -7,6 +7,7 @@ import torch.utils.data as data
 from torch.utils.data import Dataset, DataLoader
 
 from multilayer_perceptron import MLP
+from convolutional_nn import CNN
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,11 +26,12 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
+DEBUG = True
 
 def blue_mask(image):
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         # blue colors
-        lower_range = np.array([86, 153, 138])
+        lower_range = np.array([86, 66, 95])
         upper_range = np.array([179,255,255])
         mask = cv2.inRange(hsv, lower_range, upper_range)
         # With canny edge detection:
@@ -46,9 +48,11 @@ def mask_img(img):
     # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
     # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
     # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
-    # cv2.imshow("image", im)
-    # cv2.waitKey(7000)
-    # cv2.destroyWindow("image")
+    global DEBUG
+    if DEBUG:
+        cv2.imshow("image", im)
+        cv2.waitKey(1000)
+        cv2.destroyWindow("image")
 
     # im = cv2.copyMakeBorder(im, 1, 1, 1, 1, cv2.BORDER_CONSTANT, None, value = 0)
     # cv2.floodFill(im, None, (0, 28), 255)
@@ -56,7 +60,7 @@ def mask_img(img):
     # cv2.floodFill(im, None, (0, 0), 255)
     # cv2.floodFill(im, None, (28, 28), 255)
     im = cv2.resize(im, (28, 28))
-    im = cv2.bitwise_not(im)
+    # im = cv2.bitwise_not(im)
     return im
 
 class CustomDataset(Dataset):
@@ -203,7 +207,8 @@ test_iterator = data.DataLoader(test_data,
 INPUT_DIM = 28 * 28
 OUTPUT_DIM = 10
 
-model = MLP(INPUT_DIM, OUTPUT_DIM)
+# model = MLP(INPUT_DIM, OUTPUT_DIM)
+model = CNN()
 
 optimizer = optim.Adam(model.parameters())
 

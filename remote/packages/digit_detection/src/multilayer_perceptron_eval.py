@@ -6,6 +6,7 @@ import torch.optim as optim
 import torch.utils.data as data
 
 from multilayer_perceptron import MLP
+from convolutional_nn import CNN
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +32,7 @@ def mask_img(img):
     # take in cv_image # if img is filename: im = cv2.imread(f'{img}')
     im = blue_mask(img)
     im = cv2.resize(im, (28, 28))
-    im = cv2.bitwise_not(im)
+    # im = cv2.bitwise_not(im)
     return im
 
 class DigitPredictor:
@@ -41,8 +42,8 @@ class DigitPredictor:
         if input_dim is not None:
             INPUT_DIM = input_dim
             OUTPUT_DIM = output_dim
-        self.model = MLP(INPUT_DIM, OUTPUT_DIM)
-        # self.model = CNN()
+        # self.model = MLP(INPUT_DIM, OUTPUT_DIM)
+        self.model = CNN()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.load_state_dict(torch.load(model_path))
         self.model = self.model.to(self.device)
