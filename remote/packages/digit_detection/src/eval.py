@@ -71,7 +71,6 @@ class DigitPredictor:
         input_im = mask_img(input_im)
         input_im = np.expand_dims(input_im, 0)
         img_tensor = torch.from_numpy(input_im)
-        img_tensor = torch.Tensor.permute(1, 0, 2, 3)
         return img_tensor.float()
 
     def predict(self, input_im):
