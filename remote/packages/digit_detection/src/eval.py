@@ -17,6 +17,8 @@ import copy
 import random
 import time
 
+model_is_cnn = True
+
 def blue_mask(image):
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         # blue colors
