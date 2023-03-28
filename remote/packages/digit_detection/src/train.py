@@ -102,7 +102,6 @@ class CustomDataset(Dataset):
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img = mask_img(img)
         img_tensor = torch.from_numpy(img)
-        img_tensor = torch.Tensor.permute(1, 0, 2, 3)
 
         class_id = self.class_map[class_name]
         class_id = torch.tensor(class_id)
@@ -129,7 +128,8 @@ def train(model, iterator, optimizer, criterion, device):
 
         optimizer.zero_grad()
 
-        y_pred, _ = model(x)
+        # y_pred, _ = model(x) # for MLP
+        y_pred = model(x) # for CNN
 
         loss = criterion(y_pred, y)
 
@@ -158,7 +158,8 @@ def evaluate(model, iterator, criterion, device):
             x = x.to(device)
             y = y.to(device)
 
-            y_pred, _ = model(x)
+            # y_pred, _ = model(x) # for MLP
+            y_pred = model(x) # for CNN
 
             loss = criterion(y_pred, y)
 
@@ -192,7 +193,9 @@ print(f'Number of training examples: {len(train_data)}')
 print(f'Number of validation examples: {len(valid_data)}')
 print(f'Number of testing examples: {len(test_data)}')
 
-BATCH_SIZE = 64
+# BATCH_SIZE = 64 # for MLP
+BATCH_SIZE = 1 # for CNN
+
 train_iterator = data.DataLoader(train_data,
                                  shuffle=True,
                                  batch_size=BATCH_SIZE)
