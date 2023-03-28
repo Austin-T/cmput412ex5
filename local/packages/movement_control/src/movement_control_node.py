@@ -343,9 +343,8 @@ class MovementControlNode(DTROS):
             # else:
             # stop the robot
             self.stop()
-
             # grab a new camera image
-            self.pass_time(2)
+            self.pass_time(5)
             new_image = self.bridge.compressed_imgmsg_to_cv2(self.image_msg)
             new_image = cv2.undistort(new_image, self.K, self.DC, None, newcameramtx)
 
@@ -373,7 +372,8 @@ class MovementControlNode(DTROS):
                 self.digits_list.remove(digit)
                 rospy.loginfo("Remaining digits: {}".format(str(self.digits_list)))
             if len(self.ats_found) == 10 or len(self.digits_list) == 0:
-                rospy.signal_shutdown()
+                rospy.loginfo("Remaining digits: {}".format(str(self.digits_list)))
+                rospy.signal_shutdown("Program terminating.")
 
             # continue driving straight # derivative kick avoidance
             # self.pub_straight()
