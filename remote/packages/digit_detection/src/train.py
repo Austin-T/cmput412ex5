@@ -96,12 +96,13 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path, class_name = self.data[idx]
-        # same steps as in prepare_input in multilayer_perceptron_eval
+        # same steps as in prepare_input in eval.py
         img = cv2.imread(img_path)
         img = cv2.resize(img, self.img_dim)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img = mask_img(img)
         img_tensor = torch.from_numpy(img)
+        img_tensor = torch.Tensor.permute(1, 0, 2, 3)
 
         class_id = self.class_map[class_name]
         class_id = torch.tensor(class_id)
