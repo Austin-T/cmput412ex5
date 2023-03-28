@@ -114,6 +114,8 @@ class MovementControlNode(DTROS):
         self.ats_found = {}
         # tag id for debugging
         self.at_tag_id = ""
+        # list of digits left
+        self.digits_list = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
         # apriltag detection filters
         self.decision_threshold = 7
@@ -361,8 +363,11 @@ class MovementControlNode(DTROS):
 
             # terminate if all digits have been found
             self.ats_found[closest.tag_id] = digit
-            rospy.loginfo("{} apriltags found".format(str(len(self.ats_found))))
-            if len(self.ats_found) == 10:
+            if digit in self.digits_list:
+                rospy.loginfo("{} apriltags found".format(str(len(self.ats_found))))
+                self.digits_list.remove(digit)
+                rospy.loginfo("Remaining digits: {}".format(str(self.digits_list)))
+            if len(self.ats_found) == 10 or len(self.digits_list) == 0:
                 rospy.signal_shutdown()
 
             # continue driving straight # derivative kick avoidance

@@ -42,71 +42,68 @@ def mask_img(img):
     im = blue_mask(img)
 
     # add line(s) around border to prevent floodfilling the digits
-    cv2.line(im, (0,28), (28,28), (255, 255, 255), 1)
+    # cv2.line(im, (0,28), (28,28), (255, 255, 255), 1)
     # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
     # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
     # cv2.line(im, (0,self.INPUT_W), (self.INPUT_H,self.INPUT_W), (255, 255, 255), 1)
-    cv2.imshow("image", im)
-    cv2.waitKey(7000)
-    cv2.destroyWindow("image")
-    
-    im = cv2.copyMakeBorder(im, 1, 1, 1, 1, cv2.BORDER_CONSTANT, None, value = 0)
-    cv2.floodFill(im, None, (0, 28), 255)
-    cv2.floodFill(im, None, (28, 0), 255)
-    cv2.floodFill(im, None, (0, 0), 255)
-    cv2.floodFill(im, None, (28, 28), 255)
+    # cv2.imshow("image", im)
+    # cv2.waitKey(7000)
+    # cv2.destroyWindow("image")
+
+    # im = cv2.copyMakeBorder(im, 1, 1, 1, 1, cv2.BORDER_CONSTANT, None, value = 0)
+    # cv2.floodFill(im, None, (0, 28), 255)
+    # cv2.floodFill(im, None, (28, 0), 255)
+    # cv2.floodFill(im, None, (0, 0), 255)
+    # cv2.floodFill(im, None, (28, 28), 255)
     im = cv2.resize(im, (28, 28))
     im = cv2.bitwise_not(im)
-    
-    
-    
     return im
-        
+
 class CustomDataset(Dataset):
     def __init__(self):
         self.imgs_path = "test_images/"
         file_list = glob.glob(self.imgs_path + "*")
         # print(file_list)
-        
+
         self.data = []
         for class_path in file_list:
             class_name = class_path.split("/")[-1]
             for img_path in glob.glob(class_path + "/*.jpg"):
                 self.data.append([img_path, class_name])
         # print(self.data)
-        
+
         self.class_map = {
-            "0": 0, 
-            "1": 1, 
-            "2": 2, 
-            "3": 3, 
-            "4": 4, 
-            "5": 5, 
-            "6": 6, 
-            "7": 7, 
-            "8": 8, 
+            "0": 0,
+            "1": 1,
+            "2": 2,
+            "3": 3,
+            "4": 4,
+            "5": 5,
+            "6": 6,
+            "7": 7,
+            "8": 8,
             "9": 9
         }
 
         self.img_dim = (28, 28)
-    
+
     def __len__(self):
         return len(self.data)
-        
+
     def __getitem__(self, idx):
         img_path, class_name = self.data[idx]
-        
+        # same steps as in prepare_input in multilayer_perceptron_eval
         img = cv2.imread(img_path)
         img = cv2.resize(img, self.img_dim)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        #img = mask_img(img)
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = mask_img(img)
         img_tensor = torch.from_numpy(img)
-        
+
         class_id = self.class_map[class_name]
         class_id = torch.tensor(class_id)
-        
+
         return img_tensor.float(), class_id
-        
+
 def calculate_accuracy(y_pred, y):
     top_pred = y_pred.argmax(1, keepdim=True)
     correct = top_pred.eq(y.view_as(top_pred)).sum()
