@@ -351,6 +351,11 @@ class MovementControlNode(DTROS):
 
             # run digit detection on the cropped image
             cropped_image = new_image[y_min:y_max, x_min:x_max]
+
+            if len(cropped_image) == 0:
+                rospy.loginfo("Empty crop.")
+                continue
+                
             digit = self.get_digit(cropped_image)
 
             # update tag id
@@ -374,8 +379,9 @@ class MovementControlNode(DTROS):
             # self.pub_straight()
 
             # label the apriltag and digit
-            self.labelTag(image_np, closest)
             self.labelDigit(image_np, digit, (x_min, y_min), (x_max, y_max))
+
+            self.labelTag(image_np, closest)
 
             # check if the apriltag is an intersection
             if closest.tag_id in self.intersections:

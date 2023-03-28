@@ -69,7 +69,7 @@ class DigitPredictor:
         # then transform to Tensor and Normalize
         input_im = cv2.resize(input_im, (28, 28))
         input_im = mask_img(input_im)
-        # input_im = np.expand_dims(input_im, 0)
+        input_im = np.expand_dims(input_im, 0)
         img_tensor = torch.from_numpy(input_im)
         return img_tensor.float()
 
